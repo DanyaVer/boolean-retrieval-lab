@@ -9,13 +9,16 @@ import {
 } from "react";
 
 import { InvertedIndex } from "@/lib/InvertedIndex";
-import { Document } from "@/lib/types";
+import { Document, RetrievalModel } from "@/lib/types";
 
-type Step = "TERMS" | "DOCUMENTS" | "SEARCH";
+export type Step = "MODEL" | "TERMS" | "DOCUMENTS" | "SEARCH";
 
 interface LabContextType {
   currentStep: Step;
   setStep: (step: Step) => void;
+
+  model: RetrievalModel;
+  setModel: (model: RetrievalModel) => void;
 
   // Data State
   terms: string[];
@@ -36,7 +39,8 @@ const STORAGE_KEY = "lab_boolean_v1_state";
 
 export const LabProvider = ({ children }: { children: ReactNode }) => {
   // Initialize with defaults, hydration happens in useEffect
-  const [currentStep, setStep] = useState<Step>("TERMS");
+  const [currentStep, setStep] = useState<Step>("MODEL");
+  const [model, setModel] = useState<RetrievalModel>("BOOLEAN");
   const [terms, setTerms] = useState<string[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [index, setIndex] = useState<InvertedIndex | null>(null);
@@ -48,9 +52,10 @@ export const LabProvider = ({ children }: { children: ReactNode }) => {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
+        setModel(parsed.model || "BOOLEAN");
         setTerms(parsed.terms || []);
         setDocuments(parsed.documents || []);
-        setStep(parsed.step || "TERMS");
+        setStep(parsed.step || "MODEL");
 
         // Rebuild index if we were in search mode
         if (parsed.step === "SEARCH" && parsed.terms && parsed.documents) {
@@ -70,27 +75,33 @@ export const LabProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!isLoaded) return;
     const stateToSave = {
+      model,
       terms,
       documents,
       step: currentStep,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-  }, [terms, documents, currentStep, isLoaded]);
+  }, [model, terms, documents, currentStep, isLoaded]);
 
   const addDocument = (doc: Document) => {
     setDocuments((prev) => [...prev, doc]);
   };
 
   const buildIndex = () => {
-    const newIndex = new InvertedIndex(terms);
+    const isVector = model === "VECTOR";
+    // For Vector Model, we start with an empty vocabulary and dynamic expansion = true.
+    // For Boolean Model, we strictly use the user-defined terms and dynamic expansion = false.
+    const newIndex = new InvertedIndex(isVector ? [] : terms, isVector);
+
     documents.forEach((doc) => newIndex.addDocument(doc));
     setIndex(newIndex);
   };
 
   const resetAll = () => {
+    setModel("BOOLEAN");
     setTerms([]);
     setDocuments([]);
-    setStep("TERMS");
+    setStep("MODEL");
     setIndex(null);
     localStorage.removeItem(STORAGE_KEY);
   };
@@ -106,6 +117,8 @@ export const LabProvider = ({ children }: { children: ReactNode }) => {
       value={{
         currentStep,
         setStep,
+        model,
+        setModel,
         terms,
         setTerms,
         documents,

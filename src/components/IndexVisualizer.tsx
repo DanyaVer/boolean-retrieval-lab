@@ -36,7 +36,8 @@ export default function IndexVisualizer({
           <table className="min-w-full text-sm text-left">
             <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b">
               <tr>
-                <th className="px-6 py-3 w-1/3">Index Term</th>
+                <th className="px-6 py-3 w-1/4">Index Term</th>
+                <th className="px-6 py-3 w-1/4">IDF Weight (Smoothed)</th>
                 <th className="px-6 py-3">Postings List (Doc IDs)</th>
               </tr>
             </thead>
@@ -48,6 +49,9 @@ export default function IndexVisualizer({
                 >
                   <td className="px-6 py-3 font-mono text-blue-600 font-medium">
                     {term}
+                  </td>
+                  <td className="px-6 py-3 font-mono text-slate-600 text-xs font-semibold">
+                    {index.getTermIdf(term).toFixed(4)}
                   </td>
                   <td className="px-6 py-3">
                     <div className="flex flex-wrap gap-2">
@@ -69,8 +73,8 @@ export default function IndexVisualizer({
               {terms.length === 0 && (
                 <tr>
                   <td
-                    colSpan={2}
-                    className="px- py-8 t6ext-center text-slate-400"
+                    colSpan={3}
+                    className="px-6 py-8 text-center text-slate-400"
                   >
                     Index is empty. No documents contain the allowed terms.
                   </td>

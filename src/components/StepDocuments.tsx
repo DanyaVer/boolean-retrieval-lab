@@ -6,8 +6,9 @@ import { useState } from "react";
 import FileUpload from "./ui/FileUpload";
 
 export default function StepDocuments() {
-  const { documents, addDocument, setStep, buildIndex } = useLab();
+  const { documents, addDocument, setStep, buildIndex, model } = useLab();
   const [docContent, setDocContent] = useState("");
+  const stepNumber = model === "BOOLEAN" ? 3 : 2;
 
   const handleBulkUpload = (content: string, fileName: string) => {
     // Generate a mostly unique ID for file uploads
@@ -33,23 +34,36 @@ export default function StepDocuments() {
   const handleFinish = () => {
     if (documents.length === 0)
       return alert("Please add at least one document.");
-    buildIndex(); // Compile the index
+    buildIndex(); // Compile the index (automatically builds vocabulary if Vector Model)
     setStep("SEARCH");
   };
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm border">
       <h2 className="text-xl font-semibold mb-4">
-        Step 2: Document Collection
+        Step {stepNumber}: Document Collection
       </h2>
       <p className="text-sm text-slate-500 mb-4">
         Add plain text documents to the collection manually or upload files.
       </p>
-      <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-3 mb-4">
-        Note: during indexing, document text is normalized to lowercase and
-        punctuation is removed. For strict lab-compliant input, enter lowercase
-        terms separated by single spaces without punctuation.
-      </p>
+
+      {/* Dynamic Note depending on Model */}
+      <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-3 mb-4">
+        <strong>Note:</strong> During indexing, document text is normalized to
+        lowercase and punctuation is removed.
+        {model === "VECTOR" ? (
+          <span className="ml-1">
+            Since you selected the Vector Space Model, the system will
+            automatically extract all unique terms to form the basis of the
+            vector space.
+          </span>
+        ) : (
+          <span className="ml-1">
+            Only the exact terms you defined in the previous step will be
+            indexed.
+          </span>
+        )}
+      </div>
 
       <div className="mb-6 space-y-4">
         <div className="flex flex-col gap-2">

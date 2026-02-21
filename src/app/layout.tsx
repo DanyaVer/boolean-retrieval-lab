@@ -23,11 +23,17 @@ export default function RootLayout({
           <main className="min-h-screen p-8 max-w-5xl mx-auto">
             <header className="mb-8 border-b pb-4">
               <h1 className="text-3xl font-bold text-slate-800">
-                Boolean Retrieval System
+                Retrieval System
               </h1>
-              <p className="text-slate-500">
-                Lab Work #1 - Standard Boolean Model
-              </p>
+              <div className="flex flex-row gap-3">
+                <p className="text-slate-500">
+                  Lab Work #1 - Standard Boolean Model
+                </p>
+                <span> • </span>
+                <p className="text-slate-500">
+                  Lab Work #2 - Vector Space Model
+                </p>
+              </div>
             </header>
             {children}
           </main>
@@ -36,7 +42,7 @@ export default function RootLayout({
           <footer className="w-full border-t border-slate-200 bg-white mt-auto">
             <div className="max-w-5xl mx-auto p-8 text-center text-slate-500 text-sm">
               <p className="font-medium text-slate-900 mb-2">
-                Laboratory Work #1 • Information Retrieval Systems
+                Laboratory Work #1, #2 • Information Retrieval Systems
               </p>
 
               <div className="inline-flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-full text-xs uppercase tracking-wide font-semibold text-slate-600 mb-4 border border-slate-200">

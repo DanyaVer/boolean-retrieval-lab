@@ -76,7 +76,7 @@ export default function StepTerms() {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm border">
-      <h2 className="text-xl font-semibold mb-4">Step 1: Define Index Terms</h2>
+      <h2 className="text-xl font-semibold mb-4">Step 2: Define Index Terms</h2>
       <p className="text-sm text-slate-500 mb-4">
         Enter the vocabulary of terms allowed in the system. Only these words
         will be indexed.

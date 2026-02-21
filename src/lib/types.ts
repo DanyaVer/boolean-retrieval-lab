@@ -11,6 +11,8 @@ export interface InvertedIndexMap {
   [term: string]: DocId[];
 }
 
+export type RetrievalModel = "BOOLEAN" | "VECTOR";
+
 export type SearchMode = "DNF" | "CNF"; // Disjunctive vs Conjunctive Normal Form
 
 export interface SearchResult {

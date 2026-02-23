@@ -7,6 +7,9 @@ export interface SportsTeam {
   founded_date: string;
   trophies_won: number;
   is_active: boolean;
+  description?: string;
+  history?: string;
+  stadium_info?: string;
 }
 
 /**
@@ -74,6 +77,9 @@ export async function POST(request: NextRequest) {
         founded_date: body.founded_date, // Format: YYYY-MM-DD
         trophies_won: Number(body.trophies_won),
         is_active: Boolean(body.is_active),
+        description: body.description || "",
+        history: body.history || "",
+        stadium_info: body.stadium_info || "",
       },
       // Force refresh to make the document immediately available for search
       refresh: true,

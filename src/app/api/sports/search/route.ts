@@ -1,17 +1,24 @@
-import { NextRequest, NextResponse } from "next/server";
-
 import { elasticClient, SPORTS_INDEX_NAME } from "@/lib/elasticClient";
+import { NextRequest, NextResponse } from "next/server";
 import { SportsTeam } from "../route";
 
 // Define the expected structure of the incoming search parameters
 export interface SearchSportsParams {
-  namePattern?: string; // Uses wildcard (e.g., "Man*")
-  sportType?: string; // Uses exact term match
-  foundedAfter?: string; // Uses range (gte)
-  foundedBefore?: string; // Uses range (lte)
-  minTrophies?: number; // Uses range (gte)
-  maxTrophies?: number; // Uses range (lte)
-  isActive?: boolean; // Uses exact term match
+  // Metadata & Term-level parameters (Lab 3)
+  namePattern?: string;
+  sportType?: string;
+  foundedAfter?: string;
+  foundedBefore?: string;
+  minTrophies?: number | "";
+  maxTrophies?: number | "";
+  isActive?: boolean | "";
+
+  // Full-Text Search parameters (Lab 4)
+  descriptionMatch?: string; // Uses 'match' on description
+  historyMatch?: string; // Uses 'match' on history
+  stadiumMatch?: string; // Uses 'match' on stadium_info
+  historyPhrase?: string; // Uses 'match_phrase' on history
+  globalTextSearch?: string; // Uses 'multi_match' across all three text fields
 }
 
 export async function POST(request: NextRequest) {
@@ -22,11 +29,11 @@ export async function POST(request: NextRequest) {
     const mustClauses: any[] = [];
     const filterClauses: any[] = [];
 
-    // ----------------------------------------------------------------------
-    // 1. Wildcard Query (Variant Requirement)
-    // ----------------------------------------------------------------------
-    // The wildcard query finds documents where the specified field matches
-    // the wildcard pattern. We use case_insensitive to improve UX.
+    // ======================================================================
+    // PART 1: TERM-LEVEL QUERIES (Lab 3)
+    // ======================================================================
+
+    // 1. Wildcard Query
     if (body.namePattern && body.namePattern.trim() !== "") {
       mustClauses.push({
         wildcard: {
@@ -38,66 +45,84 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // ----------------------------------------------------------------------
-    // 2. Term Query (Exact Match)
-    // ----------------------------------------------------------------------
-    // The term query looks for an exact string match in the keyword field.
+    // 2. Term Queries (Exact Match)
     if (body.sportType && body.sportType.trim() !== "") {
-      filterClauses.push({
-        term: {
-          sport_type: {
-            value: body.sportType,
-          },
-        },
-      });
+      filterClauses.push({ term: { sport_type: { value: body.sportType } } });
     }
 
-    if (body.isActive !== undefined) {
-      filterClauses.push({
-        term: {
-          is_active: {
-            value: body.isActive,
-          },
-        },
-      });
+    if (body.isActive !== undefined && body.isActive !== "") {
+      filterClauses.push({ term: { is_active: { value: body.isActive } } });
     }
 
-    // ----------------------------------------------------------------------
-    // 3. Range Query (Numeric)
-    // ----------------------------------------------------------------------
-    // The range query finds documents containing values within the boundaries.
-    if (body.minTrophies !== undefined || body.maxTrophies !== undefined) {
+    // 3. Range Queries
+    if (
+      (body.minTrophies !== undefined && body.minTrophies !== "") ||
+      (body.maxTrophies !== undefined && body.maxTrophies !== "")
+    ) {
       const trophiesRange: any = {};
-      if (body.minTrophies !== undefined) trophiesRange.gte = body.minTrophies;
-      if (body.maxTrophies !== undefined) trophiesRange.lte = body.maxTrophies;
-
-      filterClauses.push({
-        range: {
-          trophies_won: trophiesRange,
-        },
-      });
+      if (body.minTrophies !== undefined && body.minTrophies !== "")
+        trophiesRange.gte = body.minTrophies;
+      if (body.maxTrophies !== undefined && body.maxTrophies !== "")
+        trophiesRange.lte = body.maxTrophies;
+      filterClauses.push({ range: { trophies_won: trophiesRange } });
     }
 
-    // ----------------------------------------------------------------------
-    // 4. Range Query (Dates)
-    // ----------------------------------------------------------------------
-    // Elasticsearch range queries natively support date fields.
-    if (body.foundedAfter !== undefined || body.foundedBefore !== undefined) {
+    if (body.foundedAfter || body.foundedBefore) {
       const dateRange: any = {};
       if (body.foundedAfter) dateRange.gte = body.foundedAfter;
       if (body.foundedBefore) dateRange.lte = body.foundedBefore;
+      filterClauses.push({ range: { founded_date: dateRange } });
+    }
 
-      filterClauses.push({
-        range: {
-          founded_date: dateRange,
+    // ======================================================================
+    // PART 2: FULL-TEXT SEARCH QUERIES (Lab 4)
+    // ======================================================================
+
+    // 4. Match Queries (Analyzed full-text search)
+    if (body.descriptionMatch && body.descriptionMatch.trim() !== "") {
+      mustClauses.push({
+        match: { description: body.descriptionMatch },
+      });
+    }
+
+    if (body.historyMatch && body.historyMatch.trim() !== "") {
+      mustClauses.push({
+        match: { history: body.historyMatch },
+      });
+    }
+
+    if (body.stadiumMatch && body.stadiumMatch.trim() !== "") {
+      mustClauses.push({
+        match: { stadium_info: body.stadiumMatch },
+      });
+    }
+
+    // 5. Match Phrase Query (Exact sequence of words)
+    if (body.historyPhrase && body.historyPhrase.trim() !== "") {
+      mustClauses.push({
+        match_phrase: {
+          history: {
+            query: body.historyPhrase,
+            slop: 0, // 0 means exact phrase. Increase slop to allow words in between.
+          },
         },
       });
     }
 
-    // ----------------------------------------------------------------------
-    // Assembly & Execution
-    // ----------------------------------------------------------------------
-    // Assemble the final query. If no filters are provided, fallback to match_all.
+    // 6. Multi-Match Query (Global search across multiple fields)
+    if (body.globalTextSearch && body.globalTextSearch.trim() !== "")
+      mustClauses.push({
+        multi_match: {
+          query: body.globalTextSearch,
+          fields: ["description", "history", "stadium_info"],
+          type: "best_fields",
+        },
+      });
+
+    // ======================================================================
+    // PART 3: ASSEMBLY & EXECUTION
+    // ======================================================================
+
     const hasConditions = mustClauses.length > 0 || filterClauses.length > 0;
 
     const query = hasConditions
@@ -112,14 +137,29 @@ export async function POST(request: NextRequest) {
     // Execute the search request against Elasticsearch
     const response = await elasticClient.search({
       index: SPORTS_INDEX_NAME,
-      size: 100, // Reasonable limit for the laboratory UI
+      size: 100,
       query: query,
+
+      // Highlight feature: Extracts the matched fragments from the text fields
+      highlight: {
+        pre_tags: [
+          "<mark class='bg-yellow-200 text-yellow-900 rounded-sm px-1'>",
+        ],
+        post_tags: ["</mark>"],
+        fields: {
+          description: {},
+          history: {},
+          stadium_info: {},
+        },
+      },
     });
 
-    // Map the response hits mapping the internal _id to the client-facing id
+    // Map the response hits, including the calculated relevance score and highlights
     const results = response.hits.hits.map((hit) => ({
       id: hit._id,
       ...(hit._source as SportsTeam),
+      score: hit._score, // Include relevance score
+      highlights: hit.highlight || {}, // Include highlighted text fragments
     }));
 
     return NextResponse.json(results, { status: 200 });

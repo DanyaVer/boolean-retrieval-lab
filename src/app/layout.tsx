@@ -41,7 +41,7 @@ export default function RootLayout({
                   href="/lab3"
                   className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-2 rounded-md transition-colors"
                 >
-                  Lab 3 (Elasticsearch)
+                  Lab 3 & 4 (Elasticsearch)
                 </Link>
               </nav>
             </header>
@@ -53,7 +53,7 @@ export default function RootLayout({
           <footer className="w-full border-t border-slate-200 bg-white mt-auto">
             <div className="max-w-5xl mx-auto p-8 text-center text-slate-500 text-sm">
               <p className="font-medium text-slate-900 mb-2">
-                Laboratory Work #1, #2, #3 • Information Retrieval Systems
+                Laboratory Work #1, #2, #3, #4 • Information Retrieval Systems
               </p>
 
               <div className="inline-flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-full text-xs uppercase tracking-wide font-semibold text-slate-600 mb-4 border border-slate-200">

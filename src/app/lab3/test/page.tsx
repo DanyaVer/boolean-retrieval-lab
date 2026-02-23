@@ -105,6 +105,12 @@ export default function ElasticsearchTestSuite() {
         founded_date: "2024-01-01",
         trophies_won: 5,
         is_active: true,
+        description: "A highly resilient team.",
+        // We use "jumped" to test if the english analyzer stems it to "jump"
+        history:
+          "The players jumped over the competition during the final match.",
+        // We use HTML tags to test the html_strip character filter
+        stadium_info: "Located near the <b>river</b> and central park.",
       };
       addLog(
         "create",
@@ -186,7 +192,45 @@ export default function ElasticsearchTestSuite() {
       updateStage("update", { status: "PASSED" });
 
       // ----------------------------------------------------------------------
-      // Test 6: Delete Document
+      // Test 6: Complex Query Builder Search (Full-Text)
+      // ----------------------------------------------------------------------
+      updateStage("search", { status: "RUNNING" });
+
+      const searchPayload = {
+        // Test stemming: 'jump' should match 'jumped' via 'english' analyzer
+        historyMatch: "jump",
+        // Test HTML strip: 'river' should match despite being in <b> tags
+        stadiumMatch: "river",
+      };
+
+      addLog(
+        "search",
+        `Testing Analyzers. Sending POST to /api/sports/search with: ${JSON.stringify(searchPayload)}`,
+      );
+
+      const searchRes = await fetch("/api/sports/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(searchPayload),
+      });
+      const searchData = await searchRes.json();
+
+      if (!searchRes.ok)
+        throw new Error(searchData.error || "Search API failed");
+      if (searchData.length === 0) {
+        throw new Error(
+          "Analyzer Test Failed: Could not find document via stemmed word 'jump' or stripped word 'river'.",
+        );
+      }
+
+      addLog(
+        "search",
+        `Success! Full-Text Search returned document. Score: ${searchData[0].score}`,
+      );
+      updateStage("search", { status: "PASSED" });
+
+      // ----------------------------------------------------------------------
+      // Test 7: Delete Document
       // ----------------------------------------------------------------------
       updateStage("delete", { status: "RUNNING" });
       addLog(
@@ -212,35 +256,6 @@ export default function ElasticsearchTestSuite() {
         "Verified: Document securely removed from Elasticsearch index.",
       );
       updateStage("delete", { status: "PASSED" });
-
-      // ----------------------------------------------------------------------
-      // Test 7: Complex Query Builder Search
-      // ----------------------------------------------------------------------
-      updateStage("search", { status: "RUNNING" });
-      const searchPayload = {
-        namePattern: "Test *", // Using wildcard requirement
-        minTrophies: 1, // Using range requirement
-        sportType: "Football", // Using term requirement
-      };
-      addLog(
-        "search",
-        `Sending POST to /api/sports/search with: ${JSON.stringify(searchPayload)}`,
-      );
-
-      const searchRes = await fetch("/api/sports/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(searchPayload),
-      });
-      const searchData = await searchRes.json();
-
-      if (!searchRes.ok)
-        throw new Error(searchData.error || "Search API failed");
-      addLog(
-        "search",
-        `Success! Search returned ${searchData.length} matching documents.`,
-      );
-      updateStage("search", { status: "PASSED" });
     } catch (error: any) {
       console.error("Test Suite Error:", error);
       // Mark the currently running stage as FAILED
